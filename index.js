@@ -1,5 +1,4 @@
-import {dotenv} from 'dotenv';
-dotenv.config()
+require('dotenv').config()
 
 import {Client} from 'discord.js';
 
