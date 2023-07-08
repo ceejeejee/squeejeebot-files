@@ -55,7 +55,7 @@ client.on("messageCreate", async (message) => {
 
                 }catch(error){
                     console.log(error);
-                    message.channel.send("couldn't process image :bangbang: sowwy,,,");
+                    errorMessage();
                 }
             });
         }     
@@ -84,8 +84,12 @@ async function resize(fileExt){
                 console.log('image resized!');
             });
 
-        }).then(console.log('finished resizing'));
+        }).then(console.log('finished resizing')).catch(() => errorMessage());
     }else{
-        message.channel.send("couldn't process image :bangbang: sowwy,,,");
+        errorMessage();
     }
+}
+
+function errorMessage(){
+    message.channel.send("couldn't process image :bangbang: sowwy,,,");
 }
