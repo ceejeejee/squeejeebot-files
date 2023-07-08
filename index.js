@@ -71,6 +71,7 @@ client.on("messageCreate", async (message) => {
                     const filename = `./temp/${message.guild.name}${message.channel.name}_${message.author.username}${fileExt}`;
 
                     fs.writeFileSync(filename, buffer);
+                    
                     await resize(filename, fileExt);
                     console.log(`saved as: ${filename}`);
 
