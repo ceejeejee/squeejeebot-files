@@ -27,7 +27,7 @@ const client = new Client({
 client.login(process.env.DISCORD_TOKEN);
 
 client.on("messageCreate", async (message) => {
-    console.log(message);
+    // console.log(message);
 
     if(!message?.author.bot){
         
@@ -44,9 +44,10 @@ client.on("messageCreate", async (message) => {
                     const buffer = new DataView(await data.arrayBuffer());
                     const fileExt = a.name.slice(a.name.lastIndexOf('.'));
                     fs.writeFileSync(`./temp${fileExt}`, buffer);
-                    await resize(fileExt);
+                    const filename = await resize(fileExt);
+                    console.log(filename);
 
-                    const attachment = new AttachmentBuilder(`./temp${fileExt}`);
+                    const attachment = new AttachmentBuilder(filename);
                     message.channel.send({files: [attachment]})
                         .then(
                             message.delete()
@@ -64,17 +65,21 @@ client.on("messageCreate", async (message) => {
 
 async function resize(fileExt){
     if(SUPPORTED_IMGS.includes(fileExt)){
-        const resizePromise = new Promise(async () => {
+        const resizePromise = new Promise(async (resolve) => {
             let image = await Image.load(`./temp${fileExt}`);
             image.resize({ width: 200 });
-            await image.save(`./temp${fileExt}`).then(Promise.resolve(resizePromise));
-        }).then(console.log('finished resizing'));
+            await image.save(`./temp${fileExt}`)
+            console.log('image resized!');
+            resolve(`./temp${fileExt}`);
+        });
+        return resizePromise;
+            
 
     }else if(fileExt === '.gif'){
-        const resizePromise = new Promise(async () => {
-        console.time('execute time');
+        const resizePromise = new Promise(async (resolve) => {
+            console.time('execute time');
             // Gifsicle implementation: https://stackoverflow.com/questions/47138754/nodejs-animated-gif-resizing
-            execFile(gifsicle, ['--resize-fit-width', '300', '-o', `./temp${fileExt}`, `./temp${fileExt}`], err => {
+            execFile(gifsicle, ['--resize-fit-width', '300', '-o', `./temp_smol${fileExt}`, `./temp${fileExt}`], err => {
                 console.timeEnd('execute time');
 
                 if (err) {
@@ -82,9 +87,11 @@ async function resize(fileExt){
                 }
 
                 console.log('image resized!');
+                resolve(`./temp_smol${fileExt}`);
             });
+        });
+        return resizePromise;
 
-        }).then(console.log('finished resizing')).catch(() => errorMessage());
     }else{
         errorMessage();
     }
@@ -93,3 +100,7 @@ async function resize(fileExt){
 function errorMessage(){
     message.channel.send("couldn't process image :bangbang: sowwy,,,");
 }
+
+// function replaceFile(filename){
+//     
+// }
