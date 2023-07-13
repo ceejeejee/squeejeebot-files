@@ -1,59 +1,66 @@
-import dotenv from 'dotenv';
-dotenv.config();
+// import dotenv from 'dotenv';
+// dotenv.config();
 
-import {Client, IntentsBitField, Embed, Attachment, AttachmentBuilder, Collection, Events, GatewayIntentBits} from "discord.js";
-import { Image } from'image-js';
-import fs from 'fs';
-import { execFile } from 'child_process';
-import gifsicle from "gifsicle";
-import path from 'node:path';
+// import Discord from "discord.js";
+// import { Image } from'image-js';
+// import fs from 'fs/promises';
+// import { execFile } from 'child_process';
+// import Enmap from 'enmap';
+// import util from "util/types";
 
-const client = new Client({
-    intents:    [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.DirectMessages,
-        GatewayIntentBits.MessageContent,
-    ],
-});
-
-// client.commands = new Collection();
-
-// const commandsPath = './commands';
-// const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
-
-// // for (const file of commandFiles) {
-// // 	const filePath = path.join(commandsPath, file);
-// // 	const command = from filePath;
-// // 	// Set a new item in the Collection with the key as the command name and the value as the exported module
-// // 	if ('data' in command && 'execute' in command) {
-// // 		client.commands.set(command.data.name, command);
-// // 	} else {
-// // 		console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
-// // 	}
-// // }
-// const cmdFiles = fs.readdir("./commands", (err, files) =>{
-//     files.forEach((f) => {
-//         if (!f.endsWith(".js")) return;
-//             const response = client.loadCommand(f);
-//         if (response) {
-//             console.log(response);
-//         }
-//     });
-// });
+require('dotenv').config()
+const Discord = require('discord.js');
+const {Image} = require('image-js');
+const fs = require('fs/promises');
+const child_process = require('child_process');
+const Enmap = require('enmap');
+const gifResize = require('@gumlet/gif-resize');
 
 
 const SUPPORTED_IMGS = ['.png', '.jpg', '.TIFF'];
 
+const client = new Discord.Client({
+    intents:    [
+        Discord.GatewayIntentBits.Guilds,
+        Discord.GatewayIntentBits.GuildMessages,
+        Discord.GatewayIntentBits.GuildMembers,
+        Discord.GatewayIntentBits.DirectMessages,
+        Discord.GatewayIntentBits.MessageContent,
+    ],
+});
+
+require('./clientFunctions')(client);
+
+client.commands = new Enmap();
+client.aliases = new Enmap();
+client.settings = new Enmap();
+
+const init = async () => {
+    // load commands
+    // cmdFiles = await fs.readdir("./commands");
+    // cmdFiles.forEach((f) => {
+    //   if (!f.endsWith(".js")) return;
+    //   const response = client.loadCommand(f);
+    //   if (response) {
+    //     console.log(response);
+    //   }
+    // });
+
+    
+};
 client.login(process.env.DISCORD_TOKEN);
+init();
+
+
+client.on('ready', (c) => {
+    console.log(`${c.user.tag} is online`);
+});
 
 client.on("messageCreate", async (message) => {
     // console.log(message);
 
-    // resend text messages & file attachments
     if(!message?.author.bot){
-        
+        // resend text messages & file attachments
         if(message?.attachments !== undefined){
             // resend text message if message.content is not empty
             if(message.content !== ''){
@@ -68,19 +75,27 @@ client.on("messageCreate", async (message) => {
                     const data = await fetch(a.url);
                     const buffer = new DataView(await data.arrayBuffer());
                     const fileExt = a.name.slice(a.name.lastIndexOf('.'));
-                    const filename = `./temp/${message.guild.name}${message.channel.name}_${message.author.username}${fileExt}`;
+                    const filename = `${message.guild.name}${message.channel.name}_${message.author.username}${fileExt}`;
 
-                    fs.writeFileSync(filename, buffer);
-                    
+                    await fs.writeFile(`./temp/${filename}`, buffer);
+
                     await resize(filename, fileExt);
                     console.log(`saved as: ${filename}`);
 
-                    const attachment = new AttachmentBuilder(filename);
+                    const attachment = new Discord.AttachmentBuilder(`./temp/smol_${filename}`);
                     message.channel.send({files: [attachment]})
                         .then(
                             message.delete()
                                 .then(msg => console.log(`Deleted message from ${msg.author.username}`)));
-                    fs.rm(filename, (err) => {
+                    
+                    fs.rm(`./temp/${filename}`, {}, (err) => {
+                        if(err){
+                            // File deletion failed
+                            console.error(err.message);
+                            return;
+                        }
+                    });
+                    fs.rm(`./temp/smol_${filename}`, {}, (err) => {
                         if(err){
                             // File deletion failed
                             console.error(err.message);
@@ -93,38 +108,16 @@ client.on("messageCreate", async (message) => {
                     message.channel.send("couldn't process image :bangbang: sowwy,,,");
                 }
             });
-        }     
+        }
     }
-});
-
-client.on(Events.InteractionCreate, async interaction => {
-	if (!interaction.isChatInputCommand()) return;
-
-	const command = interaction.client.commands.get(interaction.commandName);
-
-	if (!command) {
-		console.error(`No command matching ${interaction.commandName} was found.`);
-		return;
-	}
-
-	try {
-		await command.execute(interaction);
-	} catch (error) {
-		console.error(error);
-		if (interaction.replied || interaction.deferred) {
-			await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
-		} else {
-			await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
-		}
-	}
 });
 
 async function resize(filename, fileExt){
     if(SUPPORTED_IMGS.includes(fileExt)){
         const resizePromise = new Promise(async (resolve) => {
-            let image = await Image.load(filename);
-            image.resize({ width: 200 });
-            await image.save(filename)
+            let image = await Image.load(`./temp/${filename}`);
+            const smolImage = image.resize({ width: 300 });
+            await smolImage.save(`./temp/smol_${filename}`)
             console.log('image resized!');
             resolve(filename);
         });
@@ -133,18 +126,13 @@ async function resize(filename, fileExt){
 
     }else if(fileExt === '.gif'){
         const resizePromise = new Promise(async (resolve) => {
-            console.time('execute time');
-            // Gifsicle implementation: https://stackoverflow.com/questions/47138754/nodejs-animated-gif-resizing
-            execFile(gifsicle, ['--resize-fit-width', '300', '-o', filename, filename], err => {
-                console.timeEnd('execute time');
-
-                if (err) {
-                    throw err;
-                }
-
-                console.log('image resized!');
-                resolve(filename);
+            const buf = await fs.readFile(`./temp/${filename}`);
+            await gifResize({
+                width: 200
+            })(buf).then(async (data) => {
+                await fs.writeFile(`./temp/smol_${filename}`, data);
             });
+            resolve(filename);
         });
         return resizePromise;
 
