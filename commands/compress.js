@@ -1,8 +1,6 @@
 const Discord = require('discord.js');
 const {Image} = require('image-js');
 const fs = require('fs/promises');
-const child_process = require('child_process');
-const Enmap = require('enmap');
 const gifResize = require('@gumlet/gif-resize');
 
 exports.run = (client, message) => {
