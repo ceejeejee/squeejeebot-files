@@ -29,7 +29,7 @@ const client = new Discord.Client({
     ],
 });
 
-require('./clientFunctions')(client);
+require('./clientFunctions.js')(client);
 
 client.commands = new Enmap();
 client.aliases = new Enmap();
@@ -37,18 +37,18 @@ client.settings = new Enmap();
 
 const init = async () => {
     // load commands
-    // cmdFiles = await fs.readdir("./commands");
-    // cmdFiles.forEach((f) => {
-    //   if (!f.endsWith(".js")) return;
-    //   const response = client.loadCommand(f);
-    //   if (response) {
-    //     console.log(response);
-    //   }
-    // });
-
+    cmdFiles = await fs.readdir("./commands");
+    cmdFiles.forEach((f) => {
+      if (!f.endsWith(".js")) return;
+      const response = client.loadCommand(f);
+      if (response) {
+        console.log(response);
+      }
+    });
+    client.login(process.env.DISCORD_TOKEN);
     
 };
-client.login(process.env.DISCORD_TOKEN);
+
 init();
 
 
